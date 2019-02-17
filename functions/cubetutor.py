@@ -24,8 +24,7 @@ async def CubeTutorPackChrome(cubeId, ctx):
         
     try:
         gtfo = webdriver.common.action_chains.ActionChains(driver)
-        footer = driver.find_element_by_id('footer')
-        gtfo.move_to_element(footer)
+        gtfo.move_by_offset(9000,9000)
         element = driver.find_element_by_id('main')
         elementPng = element.screenshot_as_png
         
@@ -38,7 +37,7 @@ async def tearDownClass(driver, png=None, ctx=None):
     driver.quit()
     if png:
         packImage = discord.File(png, "crack.png")
-        await ctx.channel.send("You're pack, friend. ", file=packImage)
+        await ctx.channel.send("Your pack, friend. ", file=packImage)
     if not png:
         await ctx.channel.send("Sorry, your pack couldn't be found. Please try again later.")
 
