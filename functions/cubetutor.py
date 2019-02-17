@@ -11,11 +11,13 @@ async def CubeTutorPackChrome(cubeId, ctx):
     except Exception as e:
         print(e)
         return False
+
     endpoint = "http://www.cubetutor.com/samplepack/"+str(cubeId)
     driver = webdriver.Remote(
         command_executor = selenium + "wd/hub",
         desired_capabilities = {"browserName": "chrome", "javascriptEnabled": True}
         )
+
     try:
         driver.get(endpoint)
     except Exception as e:
@@ -24,10 +26,9 @@ async def CubeTutorPackChrome(cubeId, ctx):
         
     try:
         gtfo = webdriver.common.action_chains.ActionChains(driver)
-        gtfo.move_by_offset(9000,9000)
+        gtfo.move_by_offset(9000,9000).perform()
         element = driver.find_element_by_id('main')
         elementPng = element.screenshot_as_png
-        
         await tearDownClass(driver, png=elementPng, ctx=ctx)
     except Exception as e:
         print(e)
@@ -41,6 +42,3 @@ async def tearDownClass(driver, png=None, ctx=None):
     if not png:
         await ctx.channel.send("Sorry, your pack couldn't be found. Please try again later.")
 
-if __name__ == "__main__":
-    setUpClass()
-    
