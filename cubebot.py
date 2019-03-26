@@ -13,7 +13,7 @@ botToken = os.environ['CUBEBOT']
 
 #Initializing bot
 description = '''CubeBot Commands'''
-bot = commands.Bot(command_prefix='$', description=description)
+bot = commands.Bot(command_prefix='$', description=description, pm_help=True)
 
 @bot.event
 async def on_ready():
@@ -24,5 +24,6 @@ async def on_ready():
 
 
 bot.load_extension("functions.cubebot")
+bot.load_extension("functions.rotisserie")
 
 bot.run(botToken)

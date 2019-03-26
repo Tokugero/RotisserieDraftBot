@@ -12,7 +12,7 @@ logger = logging.getLogger('cubebot.cubebot')
 
 logger.info("cubebot cog loaded")
 
-class Application:
+class Application(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
