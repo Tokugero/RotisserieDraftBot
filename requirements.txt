@@ -1,4 +1,4 @@
-git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]
+discord.py
 async-timeout==3.0.1
 attrs==18.2.0
 certifi==2018.11.29

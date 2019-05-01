@@ -3,7 +3,6 @@ import asyncio
 import os
 import logging
 import sys
-from functions import cubebot
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logger = logging.getLogger('cubebot.main')
@@ -13,7 +12,7 @@ botToken = os.environ['CUBEBOT']
 
 #Initializing bot
 description = '''CubeBot Commands'''
-bot = commands.Bot(command_prefix='$', description=description, pm_help=True)
+bot = commands.Bot(command_prefix='-', description=description, pm_help=True)
 
 @bot.event
 async def on_ready():
@@ -23,7 +22,6 @@ async def on_ready():
     logger.info('------')
 
 
-bot.load_extension("functions.cubebot")
 bot.load_extension("functions.rotisserie")
 
 bot.run(botToken)

@@ -1,1 +1,1 @@
-__all__ = ["cubebot", "cubetutor"]
+__all__ = []
