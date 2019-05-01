@@ -6,7 +6,7 @@ A bot for various automation and support in the MTG Cube Talk discord
 
 This bot is written using the [Discord.py Rewrite](https://github.com/Rapptz/discord.py/tree/rewrite).
 
-The initial intention is to be able to quickly generate Pack 1 Pick 1 screenshots for discussion and theory crafting. Further iterations may have more functionality as desired.
+Specificly addresses needs for Rotisserie Drafting
 
 ## Requirements
 
