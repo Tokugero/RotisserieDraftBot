@@ -197,9 +197,9 @@ class Application(commands.Cog):
                             await ctx.message.delete()
                             stopDrafting = False
                             for player in cube["players"]:
-                                if len(player["picks"]) == 2:
+                                if len(player["picks"]) == 45:
                                     stopDrafting = True
-                                if len(player["picks"]) < 2:
+                                if len(player["picks"]) < 45:
                                     stopDrafting = False
                             if not stopDrafting:
                                 if not lastPlayer:
