@@ -12,7 +12,7 @@ botToken = os.environ['CUBEBOT']
 
 #Initializing bot
 description = '''CubeBot Commands'''
-bot = commands.Bot(command_prefix='-', description=description, pm_help=True)
+bot = commands.Bot(command_prefix='$', description=description, help_command=commands.DefaultHelpCommand(dm_help=True))
 
 @bot.event
 async def on_ready():

@@ -54,7 +54,7 @@ async def updateServer(bot, ctx):
             await saveCubes()
             try:
                 #Find the original message and server to update
-                origMessage = await channel.get_message(cube["message"])
+                origMessage = await channel.fetch_message(cube["message"])
                 await origMessage.edit(embed=embed)
             except Exception as e:
                 logger.info(e)
@@ -194,6 +194,7 @@ class Application(commands.Cog):
                                 lastPlayer = True
                                 cube["players"].reverse()
                             await updateServer(self.bot, ctx)
+                            await ctx.message.delete()
                             stopDrafting = False
                             for player in cube["players"]:
                                 if len(player["picks"]) == 2:
@@ -220,7 +221,6 @@ class Application(commands.Cog):
                                         cubeObjects.remove(cube)
                                         os.remove("./cubes/json-"+str(ctx.channel.id))
                                         await updateServer(self.bot, ctx)
-                                        return
                                 await ctx.channel.edit(topic="No drafts active. ", reason="Draft completed.")
                                 await ctx.send("Drafting is completed! All choices are final and locked.")
                                 await ctx.message.delete()

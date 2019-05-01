@@ -1,4 +1,5 @@
-cubes/*
+cubes/json-*
+cubes/raw-*
 *.swp
 __pycache__/
 pip-selfcheck.json
