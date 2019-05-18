@@ -14,6 +14,9 @@ logger = logging.getLogger('cubebot.rotisserie')
 
 logger.info("rotisserie cog loaded")
 
+maxPlayersPerMessage = 4  
+draftMax = 45
+
 #Load cubes on init
 cubeObjects = []
 for fil in os.listdir("./cubes/"):
@@ -29,6 +32,11 @@ async def saveCubes():
                  json.dump(cube, jsonFile)
         logger.info("Saving cube")
 
+# Divide an iterable into chunks
+def chunk(length, count):
+    for i in range(0, len(length), count):
+        yield length[i:i + count]
+
 async def updateServer(bot, ctx):
     logger.info("Updating server")
     if cubeObjects:
@@ -39,25 +47,23 @@ async def updateServer(bot, ctx):
             #Get the channel from the context of the command
             channel = ctx.message.channel
             logger.info(channel)
-            embed = discord.Embed(title="Game Master: " + bot.get_user(cube["creator"]).name + " - Draft Pick Board (try `$help rot` and `$rot rules`)", description=cube["link"], color=0x00ff00)
-            for player in cube["players"]:
-                playerName = bot.get_user(player["player"])
-                turnNum = cube["players"].index(player)
-                if (turnNum != 0 and len(cube["players"][turnNum-1]["picks"]) > len(cube["players"][turnNum]["picks"]) \
-                      or (turnNum == 0 \
-                        and len(cube["players"][turnNum-1]["picks"]) == len(cube["players"][turnNum]["picks"]))):
-                    embed.set_footer(text="Active Drafter: " + playerName.name + " | Cards selected so far: " + str(len(player["picks"])) + " of 45")
-                pickList = "```\n"
-                for pick in player["picks"]:
-                    pickList += str(pick) + "\n"
-                embed.add_field(name=playerName.name, value=pickList + "```")
+            async for message in ctx.channel.history():
+                await message.delete()
+            for playerGroup in chunk(cube["players"], maxPlayersPerMessage):
+                embed = discord.Embed(title="Game Master: " + bot.get_user(cube["creator"]).name + " - Draft Pick Board (try `$help rot` and `$rot rules`)", description=cube["link"], color=0x00ff00)
+                for player in playerGroup:
+                    playerName = bot.get_user(player["player"])
+                    turnNum = cube["players"].index(player)
+                    if (turnNum != 0 and len(cube["players"][turnNum-1]["picks"]) > len(cube["players"][turnNum]["picks"]) \
+                          or (turnNum == 0 \
+                            and len(cube["players"][turnNum-1]["picks"]) == len(cube["players"][turnNum]["picks"]))):
+                        embed.set_footer(text="Active Drafter: " + playerName.name + " | Cards selected so far: " + str(len(player["picks"])) + " of 45")
+                    pickList = "```\n"
+                    for pick in player["picks"]:
+                        pickList += str(pick) + "\n"
+                    embed.add_field(name=playerName.name, value=pickList + "```")
+                await channel.send(embed=embed)
             await saveCubes()
-            try:
-                #Find the original message and server to update
-                origMessage = await channel.fetch_message(cube["message"])
-                await origMessage.edit(embed=embed)
-            except Exception as e:
-                logger.info(e)
 
 class Application(commands.Cog):
     def __init__(self, bot):
@@ -104,14 +110,14 @@ class Application(commands.Cog):
                 if not cube["ready"]:
                     cube["ready"] = True
                     shuffle(cube["players"])
+                    firstPlayer = self.bot.get_user(cube["players"][0]["player"])
+                    await firstPlayer.send("The game has started and it's your turn! - " + ctx.guild.name + " - " + ctx.channel.name)
                     embed = discord.Embed(title="Draft Pick Board", description=cube["link"], color=0x00ff00)
                     for player in cube["players"]:
                         playerName = self.bot.get_user(player["player"])
                         embed.add_field(name=playerName.name, value="empty")
                     origMessage = await ctx.send(embed=embed)
-                    cube["message"] = origMessage.id
         await updateServer(self.bot, ctx)
-        await ctx.message.delete()
          
 
     @rot.command()
@@ -138,14 +144,12 @@ class Application(commands.Cog):
              for card in cubeListParsed:
                  cubeList.append(card.lower().rstrip())
         logger.info(str(len(cubeList)) + " cards loaded")
-        cube = {"creator": ctx.author.id, "name": ctx.channel.id, "list": cubeList, "players": [{"player": ctx.author.id, "picks": []}], "ready": False, "link": link, "message": None}
+        cube = {"creator": ctx.author.id, "name": ctx.channel.id, "list": cubeList, "players": [{"player": ctx.author.id, "picks": []}], "ready": False, "link": link}
         await ctx.channel.edit(topic="Players: " + ctx.message.author.name)
         cubeObjects.append(cube)
         os.remove(rawPath)
         logger.info(str(cube["name"]) + " loaded")
         await updateServer(self.bot, ctx)
-        async for message in ctx.channel.history():
-            await message.delete()
 
     @rot.command()
     async def removeDraft(self, ctx):
@@ -156,21 +160,16 @@ class Application(commands.Cog):
                 os.remove("./cubes/json-"+str(ctx.channel.id))
                 await ctx.channel.edit(topic="No drafts active.")
         await updateServer(self.bot, ctx)
-        await ctx.message.delete()
 
     @rot.command()
     async def cleanRoom(self, ctx):
         for cube in cubeObjects:
             if cube["name"] == ctx.channel.id and cube["creator"] == ctx.message.author.id:
-                async for message in ctx.channel.history():
-                    if message.id == cube["message"]:
-                        continue
-                    await message.delete()
                 await updateServer(self.bot, ctx)
 
     @rot.command()
     async def pick(self, ctx, *, card):
-        """Make your selection"""
+        """Make your selection, or 'randomCard' for a random selection"""
         for cube in cubeObjects:
             if cube["name"] == ctx.channel.id:
                 if not cube["ready"]:
@@ -186,24 +185,36 @@ class Application(commands.Cog):
                             await ctx.message.author.send("It's not your turn!")
                             await ctx.message.delete()
                             return
-                        if card.lower() in cube["list"]:
-                            player["picks"].append(card.lower())
-                            cube["list"].remove(card.lower())
+                        if card.lower() == "randomcard":
+                            card = random.choice(cube["list"])
+                            logger.info(card)
+                        match = {"count": 0, "matched": []}
+                        for actual in cube["list"]:
+                            if card.lower() in actual:
+                                match["count"] += 1
+                                match["matched"].append(actual)
+                        if match["count"] > 1:
+                            fullResults = ""
+                            for matchingCard in match["matched"]:
+                                fullResults += matchingCard + ", "
+                            await ctx.message.author.send("Results ambiguous, did you mean: " + fullResults + "?")
+                        if match["count"] == 1:
+                            player["picks"].append(match["matched"][0])
+                            cube["list"].remove(match["matched"][0])
                             lastPlayer = False
                             if turnNum == len(cube["players"])-1:
                                 lastPlayer = True
                                 cube["players"].reverse()
                             await updateServer(self.bot, ctx)
-                            await ctx.message.delete()
                             stopDrafting = False
                             for player in cube["players"]:
-                                if len(player["picks"]) == 45:
+                                if len(player["picks"]) == draftMax:
                                     stopDrafting = True
-                                if len(player["picks"]) < 45:
+                                if len(player["picks"]) < draftMax:
                                     stopDrafting = False
                             if not stopDrafting:
                                 if not lastPlayer:
-                                    await self.bot.get_user(cube["players"][turnNum+1]["player"]).send("It's your turn!")
+                                    await self.bot.get_user(cube["players"][turnNum+1]["player"]).send("It's your turn! "+ctx.guild.name+" - "+ctx.channel.name)
                                 if lastPlayer:
                                     await self.bot.get_user(cube["players"][0]["player"]).send("It's still your turn!")
                                 return
@@ -223,7 +234,6 @@ class Application(commands.Cog):
                                         await updateServer(self.bot, ctx)
                                 await ctx.channel.edit(topic="No drafts active. ", reason="Draft completed.")
                                 await ctx.send("Drafting is completed! All choices are final and locked.")
-                                await ctx.message.delete()
                                 return
                         await ctx.message.author.send("Wasn't able to add the card, sorry. Likely the card is already taken.")
                         await ctx.message.delete()
@@ -254,7 +264,6 @@ class Application(commands.Cog):
             else:
                 logger.info("No active games found")
         await updateServer(self.bot, ctx)
-        await ctx.message.delete()
 
     @rot.command()
     async def leave(self, ctx):
@@ -282,7 +291,6 @@ class Application(commands.Cog):
                 if cube["creator"] == ctx.author.id:
                     cube["creator"] = cube["players"][0]["player"]
         await updateServer(self.bot, ctx)
-        await ctx.message.delete()
 
     @rot.command()
     async def kick(self, ctx):
@@ -320,7 +328,33 @@ class Application(commands.Cog):
                     if newOwnerNeeded:
                         cube["creator"] = cube["players"][0]["player"]
         await updateServer(self.bot, ctx)    
-        await ctx.message.delete()
 
+    @rot.command()
+    async def add(self, ctx):
+        """Add @players to a draft"""
+        for cube in cubeObjects:
+            if cube["name"] == ctx.channel.id and cube["creator"] != ctx.author.id:
+                await ctx.message.author.send("You're not the GM, you can't add people!")
+                await self.bot.get_user(cube["creator"]).send(ctx.message.author.name + " just tried to add someone to a draft! Rude.\n" + "```"+ctx.message.clean_content+"```")
+                await ctx.message.delete()
+                return
+            if cube["name"] == ctx.channel.id and cube["creator"] == ctx.author.id:
+                if cube["ready"]:
+                    await ctx.author.send("Game is already started, you can't add!")
+                    return
+                for mention in ctx.message.mentions:
+                    found = False
+                    for player in cube["players"]:
+                        if mention.id == player["player"]:
+                            found = True
+                    if not found:
+                        cube["players"].append({"player": mention.id, "picks": []})
+                        topic = "Players: "
+                        for player in cube["players"]:
+                            topic = topic + str(self.bot.get_user(player["player"]).name) + " | "
+                        await ctx.channel.edit(topic=topic, reason="New player joined.")
+                        logger.info(str(cube))
+            
+          
 def setup(bot):
     bot.add_cog(Application(bot))
