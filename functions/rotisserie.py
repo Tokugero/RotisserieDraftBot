@@ -221,14 +221,15 @@ class Application(commands.Cog):
                             if stopDrafting:
                                 for cube in cubeObjects:
                                     if cube["name"] == ctx.channel.id:
-                                        embed = discord.Embed(title="Picks from the draft: ", description=ctx.channel.guild.name + " - " + ctx.channel.name)
-                                        for player in cube["players"]:
-                                            picks = "```\n"
-                                            for pick in player["picks"]:
-                                                picks += pick + "\n"
-                                            embed.add_field(name=self.bot.get_user(player["player"]).name, value=picks+"```") 
-                                        for player in cube["players"]:
-                                            await self.bot.get_user(player["player"]).send(embed=embed)
+                                        for playerGroup in chunk(cube["players"], maxPlayersPerMessage):
+                                            embed = discord.Embed(title="Picks from the draft: ", description=ctx.channel.guild.name + " - " + ctx.channel.name)
+                                            for player in playerGroup:
+                                                picks = "```\n"
+                                                for pick in player["picks"]:
+                                                    picks += pick + "\n"
+                                                embed.add_field(name=self.bot.get_user(player["player"]).name, value=picks+"```") 
+                                            for player in cube["players"]:
+                                                await self.bot.get_user(player["player"]).send(embed=embed)
                                         cubeObjects.remove(cube)
                                         os.remove("./cubes/json-"+str(ctx.channel.id))
                                         await updateServer(self.bot, ctx)
