@@ -190,13 +190,15 @@ class Application(commands.Cog):
                             logger.info(card)
                         match = {"count": 0, "matched": []}
                         for actual in cube["list"]:
-                            if card.lower() in actual:
+                            if card.lower() in actual.lower():
                                 match["count"] += 1
                                 match["matched"].append(actual)
+                                logger.info(actual)
                         if match["count"] > 1:
                             fullResults = ""
                             for matchingCard in match["matched"]:
                                 fullResults += matchingCard + ", "
+                            logger.info(fullResults)
                             await ctx.message.author.send("Results ambiguous, did you mean: " + fullResults + "?")
                         if match["count"] == 1:
                             player["picks"].append(match["matched"][0])
