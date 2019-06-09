@@ -6,6 +6,7 @@ import sys
 import asyncio
 import random
 import requests
+import io
 import os
 import json
 from discord.ext import commands
@@ -358,6 +359,17 @@ class Application(commands.Cog):
                         await ctx.channel.edit(topic=topic, reason="New player joined.")
                         logger.info(str(cube))
             
-          
+    @rot.command()
+    async def list(self, ctx):
+        """DM a list of remaining cards for your favorite visualizer"""
+        for cube in cubeObjects:
+            if cube["name"] == ctx.channel.id:
+                cubeList = ""
+                for card in cube["list"]:
+                    cubeList = cubeList + card + "\r\n"
+                cubeFile = io.StringIO(cubeList)
+                await ctx.author.send("Here's the left over jank from " + ctx.guild.name + " - " + ctx.channel.name, file=discord.File(cubeFile, "cubelist.txt"))
+                await ctx.message.delete()
+
 def setup(bot):
     bot.add_cog(Application(bot))
